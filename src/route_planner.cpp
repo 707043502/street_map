@@ -39,12 +39,9 @@ void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
   current_node->FindNeighbors();
   
   for (auto node : current_node->neighbors){
-    if (node->visited)
-      continue;
-    
     node->parent = current_node; 
     node->h_value = CalculateHValue(node);
-    node->g_value = current_node->distance(*node);
+    node->g_value = current_node->distance(*node) + current_node->g_value;
     node->visited = true;
     open_list.push_back(node);
   }
@@ -64,7 +61,7 @@ bool compare(RouteModel::Node *x, RouteModel:: Node *y) {
 }
 
 RouteModel::Node *RoutePlanner::NextNode() {
-  sort(open_list->begin(), open_list->end(), compare);
+  sort(open_list.begin(), open_list.end(), compare);
   auto proposed_node = open_list.back();
   open_list.pop_back();
   return proposed_node;
@@ -86,12 +83,13 @@ std::vector<RouteModel::Node> RoutePlanner::ConstructFinalPath(RouteModel::Node 
 
     // TODO: Implement your solution here.
     while (current_node != start_node) {
-      this->distance = current_node->distance(current_ndoe->parent);
+      this->distance += current_node->distance(*current_node->parent);
       path_found.push_back(*current_node);
       current_node = current_node->parent;
     }
-    path_found.push_back(*current_node);
 
+    path_found.push_back(*current_node);
+    std::reverse(path_found.begin(), path_found.end());
     distance *= m_Model.MetricScale(); // Multiply the distance by the scale of the map to get meters.
     return path_found;
 
@@ -110,14 +108,16 @@ void RoutePlanner::AStarSearch() {
 
     // TODO: Implement your solution here.
   open_list.push_back(start_node);
-  start_node->g = 0;
-  start_node->h = start_node->distance(end_node);
+  start_node->g_value = 0;
+  start_node->visited = true;
+
   while (open_list.size() > 0) {
     current_node = NextNode();
     
-    if (current_node == end_node)
+    if (current_node == end_node){
       m_Model.path = ConstructFinalPath(end_node);
       break;
+    }
     
     AddNeighbors(current_node);
     
